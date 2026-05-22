@@ -5,20 +5,21 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use rusqlite::{Connection, Result};
-use std::sync::{Arc, Mutex};
+use rusqlite::Result;
+use std::sync::Arc;
 
-mod maps_api;
+mod database;
+mod maps;
 mod models;
+mod utils;
 
-use maps_api::MapsClient;
+use database::DatabaseClient;
+use maps::MapsClient;
 use models::Coordinate;
-
-const DATABASE_URL: &str = "timeline.db";
 
 #[derive(Clone)]
 struct AppState {
-    db: Arc<Mutex<Connection>>,
+    database: Arc<DatabaseClient>,
     maps: Arc<MapsClient>,
 }
 
@@ -26,10 +27,8 @@ struct AppState {
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
 
-    let conn = Connection::open(DATABASE_URL)?;
-
     let state = AppState {
-        db: Arc::new(Mutex::new(conn)),
+        database: Arc::new(DatabaseClient::new()),
         maps: Arc::new(MapsClient::new()),
     };
 
@@ -66,5 +65,6 @@ async fn nearby_handler(
         .await
         .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
 
+    state.database.insert_places(&places);
     Ok(Json(places))
 }
