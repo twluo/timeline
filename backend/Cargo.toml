@@ -14,3 +14,4 @@ reqwest = { version = "0.13.3", features = ["json"] }
 dotenvy = "0.15"
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
+tower-http = { version = "0.6", features = ["cors"] }

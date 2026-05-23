@@ -46,8 +46,13 @@ pub fn get_bounding_box_from_source(
     distance: f64,
 ) -> (Coordinate, Coordinate, Coordinate, Coordinate) {
     let lat_delta = (distance / EARTH_RADIUS_METERS).to_degrees();
-    let lng_delta =
-        (distance / (EARTH_RADIUS_METERS * source.latitude.to_radians().cos())).to_degrees();
+    let cos_lat = source.latitude.to_radians().cos();
+    // At the poles cos is zero; fall back to the full longitude range.
+    let lng_delta = if cos_lat.abs() < f64::EPSILON {
+        180.0
+    } else {
+        (distance / (EARTH_RADIUS_METERS * cos_lat)).to_degrees()
+    };
 
     let north = Coordinate {
         latitude: source.latitude + lat_delta,

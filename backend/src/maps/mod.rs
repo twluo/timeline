@@ -1,10 +1,38 @@
 use reqwest::Client;
-use serde_json::{Value, json};
+use serde::Deserialize;
+use serde_json::json;
 
-use crate::models::{Coordinate, NEARBY_RADIUS_METERS, Place};
+use crate::models::{Coordinate, Place};
 
 const PLACES_URL: &str = "https://places.googleapis.com/v1/places:searchNearby";
 const MAX_RESULTS: i32 = 10;
+
+#[derive(Deserialize)]
+struct NearbySearchResponse {
+    #[serde(default)]
+    places: Vec<NearbyPlace>,
+}
+
+#[derive(Deserialize)]
+struct NearbyPlace {
+    id: String,
+    #[serde(rename = "displayName")]
+    display_name: DisplayName,
+    location: ApiLocation,
+    #[serde(rename = "formattedAddress", default)]
+    formatted_address: String,
+}
+
+#[derive(Deserialize)]
+struct DisplayName {
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct ApiLocation {
+    latitude: f64,
+    longitude: f64,
+}
 
 #[derive(Clone)]
 pub struct MapsClient {
@@ -26,7 +54,11 @@ impl MapsClient {
         }
     }
 
-    pub async fn get_nearby(&self, location: &Coordinate) -> Result<Vec<Place>, reqwest::Error> {
+    pub async fn get_nearby(
+        &self,
+        location: &Coordinate,
+        radius_meters: f64,
+    ) -> Result<Vec<Place>, reqwest::Error> {
         let body = json!({
             "rankPreference": "DISTANCE",
             "maxResultCount": MAX_RESULTS,
@@ -36,12 +68,12 @@ impl MapsClient {
                         "latitude":  location.latitude,
                         "longitude": location.longitude
                     },
-                    "radius": NEARBY_RADIUS_METERS
+                    "radius": radius_meters
                 }
             }
         });
 
-        let text = self
+        let response: NearbySearchResponse = self
             .http_client
             .post(PLACES_URL)
             .header("X-Goog-Api-Key", &self.api_key)
@@ -53,27 +85,21 @@ impl MapsClient {
             .send()
             .await?
             .error_for_status()?
-            .text()
+            .json()
             .await?;
 
-        let root: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
-
-        let places: Vec<Place> = root["places"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .filter_map(|p| {
-                Some(Place {
-                    id: p["id"].as_str()?.to_string(),
-                    name: p["displayName"]["text"].as_str()?.to_string(),
-                    coordinate: Coordinate {
-                        latitude: p["location"]["latitude"].as_f64()?,
-                        longitude: p["location"]["longitude"].as_f64()?,
-                    },
-                    address: p["formattedAddress"].as_str()?.to_string(),
-                })
+        Ok(response
+            .places
+            .into_iter()
+            .map(|p| Place {
+                id: p.id,
+                name: p.display_name.text,
+                coordinate: Coordinate {
+                    latitude: p.location.latitude,
+                    longitude: p.location.longitude,
+                },
+                address: p.formatted_address,
             })
-            .collect();
-        Ok(places)
+            .collect())
     }
 }

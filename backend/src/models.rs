@@ -1,13 +1,20 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub const NEARBY_RADIUS_METERS: f64 = 50.0;
-
 /// Coordinates struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coordinate {
     pub latitude: f64,
     pub longitude: f64,
+}
+
+impl Coordinate {
+    pub fn is_valid(&self) -> bool {
+        self.latitude >= -90.0
+            && self.latitude <= 90.0
+            && self.longitude >= -180.0
+            && self.longitude <= 180.0
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,16 +27,9 @@ pub struct Place {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LogEntry {
+pub struct LogEntryInput {
     pub user_id: i64,
+    pub device_id: String,
     pub coordinate: Coordinate,
     pub timestamp: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct TimelineEntry {
-    pub user_id: i64,
-    pub place: Place,
-    pub coordinate: Coordinate,
-    pub timestamp: DateTime<Utc>,
 }

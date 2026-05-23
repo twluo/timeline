@@ -4,118 +4,53 @@ Back in the day, Google Maps had a feature called Timeline that allowed you to s
 
 This is an attempt to recreate that for personal use, and an excuse to learn Rust.
 
-Built with [Axum](https://github.com/tokio-rs/axum), SQLite, and the Google Maps Places API.
+## Structure
 
-## Features
-
-- Log GPS coordinates from any client device (Android/iOS)
-- Resolve nearby establishments using the Google Maps Places API
-- Query a chronological timeline of locations for any given day
-- Track visit frequency per establishment over time
+| Directory | Description |
+|---|---|
+| [`backend/`](./backend) | Rust REST API — ingests GPS coordinates, resolves nearby places, and serves timeline data |
+| [`frontend/`](./frontend) | Vue web client — displays a day's stops as an interactive map |
 
 ## Requirements
 
 - [Rust](https://rustup.rs/) (stable, 1.85+)
-- A [Google Maps API key](https://developers.google.com/maps/documentation/places/web-service/get-api-key) with the **Places API (New)** enabled
+- [Bun](https://bun.sh) (or Node.js ≥ 20.19)
+- A [Google Maps API key](https://console.cloud.google.com/google/maps-apis/credentials) with the **Places API (New)** and **Maps JavaScript API** enabled
 
 ## Getting Started
-
-### 1. Clone the repo
 
 ```sh
 git clone https://github.com/twluo/timeline
 cd timeline
 ```
 
-### 2. Configure environment variables
+### Backend
 
 ```sh
-cp .env.example .env
-```
-
-Then open `.env` and fill in your values:
-
-| Variable | Description |
-|---|---|
-| `GOOGLE_MAPS_API_KEY` | Your Google Maps API key |
-
-### 3. Run
-
-```sh
+cd backend
+cp .env.example .env  # add your GOOGLE_MAPS_API_KEY
 cargo run
 ```
 
-The server starts on `http://127.0.0.1:3000`.
+See [`backend/README.md`](./backend/README.md) for full setup and API docs.
 
-## API
-
-### `GET /health`
-
-Health check.
-
-```
-GET /health
-→ 200 OK
-```
-
----
-
-### `POST /api/log`
-
-Logs a timeline entry. Looks up nearby places from the local cache, falls back to the
-Google Maps Places API if nothing is cached, and records the closest place to the timeline.
-Returns the closest place found.
-
-**Request body**
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `userId` | integer | yes | ID of the user logging the coordinate |
-| `coordinate` | object | yes | `{ "latitude": float, "longitude": float }` |
-| `timestamp` | string | no | ISO 8601 UTC timestamp - defaults to current time if omitted |
-
-**Example**
+### Frontend
 
 ```sh
-curl -X POST http://localhost:3000/api/log \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": 1,
-    "coordinate": {
-      "latitude": 37.42207167149138,
-      "longitude": -122.08530966675468
-    }
-  }'
+cd frontend
+bun install
+cp .env.example .env  # add your VITE_GOOGLE_MAPS_API_KEY and VITE_TIMELINES_ENDPOINT
+bun run dev
 ```
 
-**Response**
-
-```json
-{
-  "id": "ChIJj61dQgK6j4AR4GeTYWZsKWw",
-  "name": "Googleplex",
-  "address": "1600 Amphitheatre Pkwy, Mountain View, CA 94043, USA",
-  "coordinate": {
-    "latitude": 37.4220656,
-    "longitude": -122.0840897
-  }
-}
-```
-
-**Errors**
-
-| Status | Meaning |
-|---|---|
-| `400` | Missing or malformed request body |
-| `404` | No places found near the coordinate |
-| `502` | Google Maps API request failed |
+See [`frontend/README.md`](./frontend/README.md) for full setup and usage.
 
 ## Roadmap
 
-- [x] `POST /api/log` - ingest a GPS coordinate and resolve its location
-- [ ] `GET /day?date=YYYY-MM-DD` - get a timeline for a given day
-- [ ] `GET /visits?place_id=` - visit history and frequency for a specific place
-- [ ] Map view of locations for a given day
+- [x] `POST /api/log` — ingest a GPS coordinate and resolve its location
+- [x] `GET /api/timeline` — get a chronological timeline for a given day
+- [x] Map view of locations for a given day
+- [ ] `GET /visits?placeId=` — visit history and frequency for a specific place
 - [ ] Android and iOS clients
 - [ ] Multi-device support
 - [ ] Authentication
